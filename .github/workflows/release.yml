@@ -1,0 +1,221 @@
+name: Release
+
+# 打一个 v* 标签就自动构建并发布 Release。
+#   git tag v1.0.0 && git push origin v1.0.0
+# 也可以在 Actions 页面手动 Run workflow（手动触发会生成一个当次构建的草稿 Release）。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（不带 v，例如 1.0.0）'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ① 免安装版：自包含单文件，目标机器什么都不用装
+          - name: standalone
+            self_contained: 'true'
+            single_file: 'true'
+            artifact: BatteryTray-standalone-win-x64
+          # ② 轻量版：框架依赖，体积小，但需要 .NET 10 Desktop Runtime
+          - name: framework-dependent
+            self_contained: 'false'
+            single_file: 'false'
+            artifact: BatteryTray-framework-dependent-win-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $v = '${{ github.event.inputs.version }}'.TrimStart('v')
+          } else {
+            # refs/tags/v1.2.3 -> 1.2.3
+            $v = '${{ github.ref_name }}'.TrimStart('v')
+          }
+          if ($v -notmatch '^\d+\.\d+\.\d+') {
+            throw "版本号不合法: '$v'（应形如 1.0.0）"
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "构建版本: $v"
+
+      - name: Build & Publish
+        shell: pwsh
+        run: |
+          $out = 'publish/${{ matrix.name }}'
+          # 注意：$args 是 PowerShell 自动变量，不能赋值，这里用 $dotnetArgs
+          # 不传 --no-restore：restore 必须看到 SelfContained/SingleFile 等属性，
+          # 否则自包含版会缺 runtime pack（NETSDK1047）。
+          $dotnetArgs = @(
+            'publish', 'BatteryTrayNet/BatteryTray.csproj',
+            '-c', 'Release',
+            '-r', 'win-x64',
+            '-p:Version=${{ steps.ver.outputs.version }}',
+            '-p:FileVersion=${{ steps.ver.outputs.version }}.0',
+            '-p:AssemblyVersion=${{ steps.ver.outputs.version }}.0',
+            '-p:SelfContained=${{ matrix.self_contained }}',
+            '-p:PublishSingleFile=${{ matrix.single_file }}',
+            '-p:IncludeNativeLibrariesForSelfExtract=${{ matrix.single_file }}',
+            '-p:EnableCompressionInSingleFile=${{ matrix.single_file }}',
+            '-p:DebugType=none',
+            '-o', $out
+          )
+          Write-Host "dotnet $($dotnetArgs -join ' ')"
+          dotnet @dotnetArgs
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish 失败，退出码 $LASTEXITCODE" }
+
+      - name: Verify output
+        shell: pwsh
+        run: |
+          $dir = 'publish/${{ matrix.name }}'
+          $exe = Join-Path $dir 'BatteryTray.exe'
+          if (-not (Test-Path $exe)) { throw "产物缺少 BatteryTray.exe: $dir" }
+          $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
+          Write-Host "BatteryTray.exe = ${size} MB"
+          Get-ChildItem $dir | Select-Object Name, Length | Format-Table -AutoSize
+
+          # 自包含版必须是单文件，任何多余文件都视为配置错误
+          if ('${{ matrix.self_contained }}' -eq 'true') {
+            $extra = Get-ChildItem $dir -File | Where-Object { $_.Name -notin @('BatteryTray.exe', 'BatteryTray.pdb') }
+            if ($extra) { throw "自包含单文件版不应包含额外文件: $($extra.Name -join ', ')" }
+          }
+
+      - name: Add usage notes
+        shell: pwsh
+        run: |
+          $dir = 'publish/${{ matrix.name }}'
+          $ver = '${{ steps.ver.outputs.version }}'
+          if ('${{ matrix.self_contained }}' -eq 'true') {
+            $lines = @(
+              "BatteryTray v$ver - 免安装版 (self-contained, win-x64)",
+              '',
+              '用法：解压后双击 BatteryTray.exe，无需安装任何运行时。',
+              '开机自启：右键任务栏贴片 -> 开机自动启动。',
+              '注意：请勿以管理员身份运行，普通权限即可。'
+            )
+          } else {
+            $lines = @(
+              "BatteryTray v$ver - 需要 .NET 10 (framework-dependent, win-x64)",
+              '',
+              '前置条件：安装 .NET 10 Desktop Runtime（不是 ASP.NET Core Runtime）',
+              '  https://dotnet.microsoft.com/download/dotnet/10.0',
+              '用法：解压后双击 BatteryTray.exe。',
+              '注意：请勿以管理员身份运行，普通权限即可。'
+            )
+          }
+          # 用 Join 拼接而不是 here-string：YAML 块标量要求 here-string 结束符顶格，
+          # 与 YAML 缩进冲突，容易踩坑。
+          $lines -join "`r`n" | Set-Content -Path (Join-Path $dir '使用说明.txt') -Encoding UTF8
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $dir = 'publish/${{ matrix.name }}'
+          $zip = Join-Path 'publish' '${{ matrix.artifact }}.zip'
+          Compress-Archive -Path (Join-Path $dir '*') -DestinationPath $zip -Force
+          Write-Host ("生成的包: {0} ({1} MB)" -f $zip, [math]::Round((Get-Item $zip).Length / 1MB, 1))
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.artifact }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ github.event.inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME}"
+          fi
+          V="${V#v}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "版本: $V"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List files
+        run: ls -lh dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # 统一用 Resolve version 的规范化结果，避免手动触发时用户输入 "v1.0.0"
+          # 导致标签变成 "vv1.0.0"
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: BatteryTray v${{ steps.ver.outputs.version }}
+          # 标签推送直接正式发布；Actions 页面手动触发生成草稿，便于先检查
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
+          generate_release_notes: true
+          files: dist/*.zip
+          body: |
+            ## Legion M6X / M6X Pro 鼠标电量 · 任务栏贴片 v${{ steps.ver.outputs.version }}
+
+            在 Windows 11 任务栏上直接显示联想 Legion 鼠标电量（`🖱 82%`），颜色随电量变化，充电时变蓝。
+            不安装 LEGION EDGE、不需要管理员权限、不常驻后台服务。
+
+            ### 下载哪个？
+
+            | 文件 | 需要装 .NET 10？ | 说明 |
+            |---|---|---|
+            | `BatteryTray-standalone-win-x64.zip` | **不需要** | 自包含单文件，解压双击即用，体积较大 |
+            | `BatteryTray-framework-dependent-win-x64.zip` | **需要** Desktop Runtime | 体积小，需先安装 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+
+            ### 用法
+
+            1. 解压
+            2. 双击 `BatteryTray.exe`
+            3. 任务栏 `^` 左侧出现「鼠标图标 + 电量百分比」
+
+            命令行：`--once`（读一次电量）、`--interval <秒>`（刷新区间）、`--autostart on|off`（开机自启）、`--diag`（诊断）。
+
+            ### 支持的设备
+
+            `VID_17EF PID_61B7`（Legion M6X / M6X Pro 2.4G 接收器）。其它型号协议不同，见仓库里的《电量获取方法.md》。
+
+            > 首次运行若弹出 Windows SmartScreen 提示，是因为 exe 未做代码签名：点「更多信息 → 仍要运行」。
+            > 请勿以管理员身份运行，普通权限即可。

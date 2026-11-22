@@ -14,6 +14,15 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <DebugType>none</DebugType>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <!-- 版本号：本地开发用默认值，CI 通过 -p:Version=... 覆盖（见 .github/workflows/release.yml） -->
+    <Version>1.0.0</Version>
+    <Product>Lenovo M6X Battery Tray</Product>
+    <Description>在 Windows 11 任务栏显示联想 Legion M6X / M6X Pro 鼠标电量</Description>
+    <Company>MagicCube1845</Company>
+    <Copyright>Copyright © 2026 MagicCube1845</Copyright>
+    <RepositoryUrl>https://github.com/MagicCube1845/Lenovo_m6x_battery</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <!--

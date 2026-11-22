@@ -28,6 +28,17 @@
 | **轻量** | 实测单核 CPU ≈0.11%，私有内存 ≈11 MB，无 GDI/句柄泄漏 |
 | **可排查** | 内置 `--once` / `--diag` / `--probe` 等命令行，每次都写日志 |
 
+## 下载 / 安装
+
+到 [Releases](https://github.com/MagicCube1845/Lenovo_m6x_battery/releases) 按需选一个：
+
+| 包 | 需要装 .NET 10？ | 说明 |
+|---|---|---|
+| `BatteryTray-standalone-win-x64.zip` | **不需要** | 自包含单文件，解压双击即用，体积较大 |
+| `BatteryTray-framework-dependent-win-x64.zip` | **需要** Desktop Runtime | 体积小，需先装 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+
+解压后双击 `BatteryTray.exe` 即可，不需要管理员权限。
+
 ## 快速开始
 
 ```powershell
@@ -84,8 +95,25 @@ Lenovo_m6x_battery/
 * 只针对 **Legion M6X / M6X Pro 2.4G 接收器**实测；其它型号（M3W / M5B / M5 Pro / M7 走联想 SDK 的 520 字节协议）
   协议不同，见 [电量获取方法.md](电量获取方法.md) 路径 A。
 * 仓库里的二进制是框架依赖发布，**目标机器需要 .NET 10 Desktop Runtime**；
-  想「双击即用」可用 `dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true` 自包含发布。
+  想「双击即用」用 Release 里的 standalone 包，或本地执行 `.\build-release.ps1` 自行打包。
 * 逆向结论基于 LEGION EDGE v1.0.5.0，固件升级后报文偏移可能变化。
+* 首次运行可能弹 SmartScreen（exe 未做代码签名），点「更多信息 → 仍要运行」。
+
+## 发布流程（维护者）
+
+```powershell
+# 1. 本地验一遍两个包都能打出来（可选）
+.\build-release.ps1 -Version 1.0.1
+
+# 2. 打 tag 并推送，GitHub Actions 自动构建两个包并创建 Release
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+工作流见 [.github/workflows/release.yml](.github/workflows/release.yml)：
+`v*` 标签触发 → 并行构建 **standalone**（自包含单文件）与 **framework-dependent**（依赖 .NET 10）两个包
+→ 各自校验产物 → 打包 zip（附 `使用说明.txt`）→ 自动创建 Release 并附带构建说明。
+也可在 Actions 页面 `workflow_dispatch` 手动触发，手动触发生成的是**草稿** Release，便于先检查再发布。
 
 ## 更新日志
 
