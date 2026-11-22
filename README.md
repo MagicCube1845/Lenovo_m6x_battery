@@ -5,10 +5,6 @@
 
 ![任务栏效果](BatteryTray/strip_shot.png)
 
-> 📌 **发布描述（Repo description，可直接粘进 GitHub）**
-> `Read Lenovo Legion M6X/M6X Pro (VID_17EF PID_61B7) mouse battery over raw HID in C#, and show it as a tiny pill on the Windows 11 taskbar — no vendor software, no background service. 免装联想驱动，直接用 C# 读 Legion M6X Pro 鼠标电量并贴在任务栏。`
-
----
 
 ## 这是什么
 
