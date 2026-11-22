@@ -1,0 +1,14 @@
+# 统一换行，避免 Windows / 其它平台之间来回改动
+* text=auto eol=lf
+
+*.cs      text eol=lf
+*.csproj  text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.manifest text eol=lf
+
+# 二进制（不要做换行转换 / 不要当文本 diff）
+*.exe  binary
+*.dll  binary
+*.png  binary
+*.ico  binary

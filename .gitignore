@@ -1,0 +1,26 @@
+# ── 构建产物 ─────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+/publish/
+*.user
+*.suo
+.vs/
+.vscode/
+
+# ── 程序运行时写出的本地文件（日志 / 崩溃转储 / 一次性输出）──
+BatteryTray.log
+crash.txt
+once.txt
+autostart.txt
+icon_preview.png
+*.log
+
+# ── 沙箱里临时使用的 .NET 目录（缓存，不入库）──────────────
+/dotnet-home/
+/dotnet8/
+/NuGetScratch/
+
+# ── 操作系统杂项 ────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store

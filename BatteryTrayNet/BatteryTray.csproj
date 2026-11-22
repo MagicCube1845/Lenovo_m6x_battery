@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>BatteryTray</AssemblyName>
+    <RootNamespace>BatteryTray</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!--
+    目标框架已升级到 net10.0-windows（本机 SDK 10.0.404 / WindowsDesktop 10.0.15）。
+
+    RollForward 保留 Major：
+      · 这台机器同时装着 10.0.10 和 10.0.15，默认策略会在同一大版本内自动挑最高的补丁，够用；
+      · 但万一以后 10.x 被卸载、只留更高版本（11.x），Major 能让程序继续跑，
+        而不是直接报 "You must install or update .NET"。
+  -->
+  <PropertyGroup>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+</Project>
