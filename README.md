@@ -5,10 +5,6 @@
 
 ![任务栏效果](BatteryTray/strip_shot.png)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 5dd5246 (docs: 精简 README，移除发布描述、发布流程与更新日志)
 ## 这是什么
 
 联想只在 **LEGION EDGE**（`C:\Program Files (x86)\LEGION EDGE`）里显示自家鼠标电量，
