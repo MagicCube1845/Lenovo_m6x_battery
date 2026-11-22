@@ -5,7 +5,10 @@
 
 ![任务栏效果](BatteryTray/strip_shot.png)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5dd5246 (docs: 精简 README，移除发布描述、发布流程与更新日志)
 ## 这是什么
 
 联想只在 **LEGION EDGE**（`C:\Program Files (x86)\LEGION EDGE`）里显示自家鼠标电量，
@@ -98,23 +101,3 @@ Lenovo_m6x_battery/
   想「双击即用」用 Release 里的 standalone 包，或本地执行 `.\build-release.ps1` 自行打包。
 * 逆向结论基于 LEGION EDGE v1.0.5.0，固件升级后报文偏移可能变化。
 * 首次运行可能弹 SmartScreen（exe 未做代码签名），点「更多信息 → 仍要运行」。
-
-## 发布流程（维护者）
-
-```powershell
-# 1. 本地验一遍两个包都能打出来（可选）
-.\build-release.ps1 -Version 1.0.1
-
-# 2. 打 tag 并推送，GitHub Actions 自动构建两个包并创建 Release
-git tag v1.0.1
-git push origin v1.0.1
-```
-
-工作流见 [.github/workflows/release.yml](.github/workflows/release.yml)：
-`v*` 标签触发 → 并行构建 **standalone**（自包含单文件）与 **framework-dependent**（依赖 .NET 10）两个包
-→ 各自校验产物 → 打包 zip（附 `使用说明.txt`）→ 自动创建 Release 并附带构建说明。
-也可在 Actions 页面 `workflow_dispatch` 手动触发，手动触发生成的是**草稿** Release，便于先检查再发布。
-
-## 更新日志
-
-* **v1.0** —— 首次提交：HID 读数、任务栏贴片、右键菜单、开机自启、全屏自动隐藏、诊断命令。
